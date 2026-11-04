@@ -1,0 +1,58 @@
+name: Compile Higgs Audio v0.3.0 for RTX 2080 Ti (sm_75)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/compile-higgs-rtx2080ti.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows-sm75:
+    runs-on: windows-2022
+    timeout-minutes: 120
+    steps:
+      - name: Check out original v0.3.0 release source
+        uses: actions/checkout@v4
+        with:
+          repository: Saganaki22/Higgs-Audio-v3-Studio
+          ref: v0.3.0
+          path: source
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Install NVIDIA CUDA Toolkit 13.2
+        uses: Jimver/cuda-toolkit@v0.2.36
+        with:
+          cuda: '13.2.0'
+
+      - name: Verify CUDA compiler
+        shell: pwsh
+        run: |
+          nvcc --version
+          Write-Host "CUDA_PATH=$env:CUDA_PATH"
+
+      - name: Compile native Windows DLL for Turing sm_75
+        shell: pwsh
+        working-directory: source
+        run: |
+          ./scripts/build_windows.ps1 -Preset windows-cuda-release -Target audiocpp_engine -CudaArchitectures '75-real' -Jobs 4
+
+      - name: Verify output and record checksum
+        shell: pwsh
+        run: |
+          $dll = 'source/build/windows-cuda-release/bin/audiocpp_engine.dll'
+          if (-not (Test-Path -LiteralPath $dll)) { throw "DLL not found: $dll" }
+          Get-Item -LiteralPath $dll | Select-Object FullName,Length
+          Get-FileHash -LiteralPath $dll -Algorithm SHA256
+
+      - name: Upload engine DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: Higgs-v0.3.0-RTX2080Ti-sm75-Windows-DLL
+          path: source/build/windows-cuda-release/bin/audiocpp_engine.dll
+          if-no-files-found: error
+          retention-days: 7
