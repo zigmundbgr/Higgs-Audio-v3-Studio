@@ -1,5 +1,8 @@
 # Higgs Audio v3 Studio
 
+> **Community build for NVIDIA RTX 2080 Ti (Turing, sm_75):** A Windows CUDA engine for v0.3.0 has been successfully tested on an RTX 2080 Ti. See the [Turing installation guide](TURING_SUPPORT.md) and [community releases](https://github.com/zigmundbgr/Higgs-Audio-v3-Studio/releases). Other RTX 20-series GPUs are not yet verified. This is an unofficial build; the original developer is [Saganaki22](https://github.com/Saganaki22/Higgs-Audio-v3-Studio).
+
+
 ![Platform](https://img.shields.io/badge/platform-Windows%20x64-0078D4)
 ![GPU](https://img.shields.io/badge/GPU-NVIDIA%20CUDA-76B900)
 ![UI](https://img.shields.io/badge/UI-Tauri%202%20%2B%20Vite-24C8DB)
