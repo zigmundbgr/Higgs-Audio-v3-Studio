@@ -1,0 +1,79 @@
+name: Publish tested Turing sm_75 community engine release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-turing-engine-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out community documentation and original licence
+        uses: actions/checkout@v4
+
+      - name: Fetch the previously validated Windows DLL artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Higgs-v0.3.0-RTX2080Ti-sm75-Windows-DLL
+          run-id: 41904732532
+          github-token: ${{ github.token }}
+          path: engine
+
+      - name: Verify the exact build reported working on RTX 2080 Ti
+        shell: bash
+        run: |
+          echo "e18f96ab3d6cf7ed76ac179c0be56db5a3a72f7d62dbb609f1a0984960bb4c92  engine/audiocpp_engine.dll" | sha256sum --check
+          file engine/audiocpp_engine.dll
+          ls -lh engine/audiocpp_engine.dll
+
+      - name: Package community binary with licence and instructions
+        shell: bash
+        run: |
+          mkdir -p package
+          cp engine/audiocpp_engine.dll LICENSE TURING_SUPPORT.md package/
+          cp .github/workflows/compile-higgs-rtx2080ti.yml package/BUILD_WORKFLOW.yml
+          (
+            cd package
+            zip -9 -r ../Higgs_Audio_v0.3.0_Turing_sm75_Windows_engine.zip .
+          )
+          sha256sum Higgs_Audio_v0.3.0_Turing_sm75_Windows_engine.zip
+
+      - name: Write release notes
+        shell: bash
+        run: |
+          cat > RELEASE_NOTES.md <<'EOF'
+          ## Unofficial NVIDIA Turing (sm_75) Windows engine for Higgs Audio v3 Studio 0.3.0
+
+          **Verified on an RTX 2080 Ti with 11 GB VRAM.** Generation worked on the previously unsupported PC after replacing the official engine with this build. Other Turing devices (including RTX 2060, RTX 2070 and RTX 2080) are *unverified*; memory requirements may prevent operation.
+
+          This is **not a standalone installer**. Install the [original v0.3.0 Windows application](https://github.com/Saganaki22/Higgs-Audio-v3-Studio/releases/tag/v0.3.0), retain its other CUDA runtime files, and replace **only** `audiocpp_engine.dll` after making a backup.
+
+          Build source: upstream tag `v0.3.0`; NVIDIA CUDA Toolkit 13.2; VS 2022; `-CudaArchitectures "75-real"`; no inference source edits.
+
+          Download the ZIP asset below. It contains the DLL, Apache 2.0 licence, build workflow, and installation instructions. See also [TURING_SUPPORT.md](https://github.com/zigmundbgr/Higgs-Audio-v3-Studio/blob/main/TURING_SUPPORT.md).
+
+          **DLL SHA-256:** `e18f96ab3d6cf7ed76ac179c0be56db5a3a72f7d62dbb609f1a0984960bb4c92`
+
+          Original project and credit: [Saganaki22/Higgs-Audio-v3-Studio](https://github.com/Saganaki22/Higgs-Audio-v3-Studio). Community build, not officially endorsed or supported.
+          EOF
+
+      - name: Publish enduring GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v0.3.0-community-turing-sm75" \
+            "./Higgs_Audio_v0.3.0_Turing_sm75_Windows_engine.zip" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Higgs Audio v0.3.0 - community Turing RTX 2080 Ti (sm_75) engine" \
+            --notes-file RELEASE_NOTES.md \
+            --target "$GITHUB_SHA" \
+            --latest=false
